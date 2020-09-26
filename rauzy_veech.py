@@ -8,7 +8,7 @@ Rronan1@cuny.gc.edu
 
 '''
 # RV INDUCTION IN Z^N
-# LAST EDIT 2/12/19 (extremly minimal edit on 9/14/20
+# LAST EDIT 9/26/2020 (
 
 
 # Iterates the dynamic system of a Rauzy-Veech Induction (on an interval exchange transformation)
@@ -119,6 +119,8 @@ csv.register_dialect('halt_dialect', delimiter=',', escapechar = '|', skipinitia
 # 8. Fix inconsistent usage of term 'halt.'
 #
 # 9. Fix debugging code.
+#
+# 10. Reimplement build_examples with np.random
 # =============================================================================
 
 
@@ -128,7 +130,7 @@ csv.register_dialect('halt_dialect', delimiter=',', escapechar = '|', skipinitia
 
 
 def build_perms(num_intervals):
-    print('Building permutations...')
+    #print('Building permutations...')
     letters = ''
     new_element = []
     perms = []
@@ -150,7 +152,7 @@ def build_perms(num_intervals):
         else:
             perms.append(all_perms[i])
 
-    print('Permutations constructed.')
+    #print('Permutations constructed.')
     return perms
 
 
@@ -190,7 +192,7 @@ def build_examples(num_ints, int_dim, c_vals, perms, num_exs):
         print('Expected {} pairs of component values. Recieved {}. Ignoring last {} pairs: '.format(
                 int_dim, len(c_vals), len(c_vals) - int_dim), c_vals[-(len(c_vals) - int_dim):])
 
-
+    #rng = np.random.default_rng()
     examples = []
     for q in range(num_exs):
         lengths = []
@@ -308,13 +310,14 @@ def infinite_longer(A,B):
 
 
 def write_output(end_condition, lengths, pi_RV, winner):
+
     # Function to call when the iteration reaches a point where we can determine
     # the future iterations, reach maximum iterations, or run into an error.
     global has_header       # Variable holding info on whether we've written a header yet
     global halt_has_header  # Variable holding info on whether we've written a header yet
     global halt_count
-
-
+    global iteration_count
+    iteration_count += num_iterations
     #halting_condition = (only_halting_inputs == 'yes') or (only_halting_inputs == 'true')
 
     if (end_condition == 'Ends') \
@@ -326,7 +329,10 @@ def write_output(end_condition, lengths, pi_RV, winner):
         end_condition_altered = end_condition
 
     if end_condition_altered == 'Ends':
+
         halt_count += 1
+        if do_not_write:
+          return
 
         if halt_has_header == False:
         #    #halt_fieldnames = ['{}/ # EX'.format(filename_input)]
@@ -341,7 +347,7 @@ def write_output(end_condition, lengths, pi_RV, winner):
                for i in range(1, int_dim + 1):
                    halt_fieldnames.append('{}{}\''.format(letter, i))
 
-            halt_fieldnames.extend(['END_CONDITION','ITERATIONS', 'RANK', 'END_RANK'])
+            halt_fieldnames.extend(['END_CONDITION','ITERATIONS'])#, 'RANK', 'END_RANK'])
             halt_writer.writerow(halt_fieldnames)
             halt_has_header = True
 
@@ -366,10 +372,11 @@ def write_output(end_condition, lengths, pi_RV, winner):
         #    halt_pi_RV.extend([pi_RV[j], pi_RV[j + 1]])
         #    j += 2
 
-        end_matrix_rank = np.linalg.matrix_rank(np.matrix(lengths))
-        halt_write_data.extend([end_condition, num_iterations, file_matrix_rank, end_matrix_rank]) #, str(halt_pi_RV).strip(' '), str(winner).strip(' ')])
+       #end_matrix_rank = np.linalg.matrix_rank(np.matrix(lengths))
+        halt_write_data.extend([end_condition, num_iterations])#, file_matrix_rank, end_matrix_rank]) #, str(halt_pi_RV).strip(' '), str(winner).strip(' ')])
         halt_writer.writerow(halt_write_data)
-
+    if do_not_write:
+        return
     if write_all is True:
         output_file_lengths = list(chain(*file_lengths))
         output_lengths = list(chain(*lengths))
@@ -390,12 +397,12 @@ def write_output(end_condition, lengths, pi_RV, winner):
                         fieldnames.append('{}{}\''.format(letter, i))
 
 
-                fieldnames.extend(['END_CONDITION', 'ITERATIONS','RANK', 'END_RANK'])
+                fieldnames.extend(['END_CONDITION', 'ITERATIONS'])#,'RANK', 'END_RANK'])
 
                 writer.writerow(fieldnames)
 
             else:
-                fieldnames = ['EXAMPLE_NUMBER', 'PERMUTATION', 'END_CONDITION', 'ITERATIONS', 'RANK', 'END_RANK']
+                fieldnames = ['EXAMPLE_NUMBER', 'PERMUTATION', 'END_CONDITION', 'ITERATIONS']#, 'RANK', 'END_RANK']
                 writer.writerow(fieldnames)
             has_header = True
         if verbose is True: #.lower() == ('yes' or 'y' or 'true'):
@@ -410,14 +417,14 @@ def write_output(end_condition, lengths, pi_RV, winner):
             for item in output_lengths:
                 write_data.append(item)
 
-            end_matrix_rank = np.linalg.matrix_rank(np.matrix(lengths))
-            write_data.extend([end_condition, num_iterations, file_matrix_rank, end_matrix_rank])
+            #end_matrix_rank = np.linalg.matrix_rank(np.matrix(lengths))
+            write_data.extend([end_condition, num_iterations])#, file_matrix_rank, end_matrix_rank])
 
             writer.writerow(write_data)
 
         else:
-            end_matrix_rank = np.linalg.matrix_rank(np.matrix(lengths))
-            write_data = [file_example_number, file_permutation, end_condition, num_iterations, file_matrix_rank, end_matrix_rank]
+            #end_matrix_rank = np.linalg.matrix_rank(np.matrix(lengths))
+            write_data = [file_example_number, file_permutation, end_condition, num_iterations]#, file_matrix_rank, end_matrix_rank]
 
             writer.writerow(write_data)
 
@@ -821,8 +828,11 @@ print('')
 print('USER INPUTS:')
 print('')
 
-def run_program(num_intervals=20, dimension=3, component_vals=[(1,5),(-5,5),(-5,5)], num_examples=1000, max_iterations=10000, filename_input=None, only_write_halts=False, write_lengths=True):
+def run_program(num_intervals=4, dimension=3, component_vals=[(1,5),(-5,5),(-5,5)],
+                num_examples=10000, max_iterations=10000, filename_input=None,
+                only_write_halts=False, write_lengths=True, print_running_info=True, write_nothing=False):
 
+#TODO: Do not use global variables!!!
     global file_lengths
     global file_permutation
     global file_example_number
@@ -832,6 +842,25 @@ def run_program(num_intervals=20, dimension=3, component_vals=[(1,5),(-5,5),(-5,
     global verbose
     global int_dim
     global subint
+    global has_header
+    global halt_has_header
+    global print_only
+    global do_not_write
+    global iteration_count
+
+    iteration_count = 0
+
+     # A list containing time stamps used to generate runtimes
+    do_not_write = write_nothing
+
+    has_header = False                 # Does the output csv file alerady have a header row. Lets assume no
+    halt_has_header = False            # Does the halting output csv file alerady have a header row. Lets assume no
+    print_only = False                 # If True output is printed in console not written to file
+
+
+    runtimes = []                      # A list to hold the runtime of each example
+    timestamps =[]                     # A list containing time stamps used to generate runtimes
+
     write_all = not only_write_halts
     halt_count = 0
     verbose = write_lengths
@@ -876,12 +905,16 @@ def run_program(num_intervals=20, dimension=3, component_vals=[(1,5),(-5,5),(-5,
         if num_exs == None:
             num_exs = 1000000
         permutations = build_perms(num_intervals)
+        print('Component Value Bounds: ', c_vals)
 
-        if len(c_vals) < int_dimension:
-            for h in int_dim - c_vals:
-                c_vals.extend(c_vals[-2],c_vals[-1])
-
+        #if len(c_vals) < int_dimension:
+        #    for h in int_dim - c_vals:
+        #        c_vals.extend(c_vals[-2],c_vals[-1])
+        example_start = time.time()
         examples = build_examples(num_ints, int_dim, c_vals, permutations, num_exs)
+        if print_running_info:
+          print('Took %f seconds' % (time.time() - example_start))
+
     global writer
     global halt_writer
 
@@ -927,10 +960,10 @@ def run_program(num_intervals=20, dimension=3, component_vals=[(1,5),(-5,5),(-5,
                             timestamps.append(time.time())
                             if len(timestamps) == 1:
                                 runtimes.append(timestamps[0]-start)
-                                print('Time at Example {}: '.format(file_example_number) + 'Took %.1f seconds' % (runtimes[0]))
+                                print('Time at Example {:,}: '.format(file_example_number) + 'Took %.1f seconds' % (runtimes[0]))
                             else:
                                 runtimes.append(timestamps[-1] - timestamps[-2])
-                                print('Time at Example {}: '.format(file_example_number) + 'Took %.1f seconds ' % (runtimes[-1]) + '(%.1f minutes total)' % (sum(runtimes)/60))
+                                print('Time at Example {:,}: '.format(file_example_number) + 'Took %.1f seconds ' % (runtimes[-1]) + '(%.1f minutes total)' % (sum(runtimes)/60))
 
 
             # ITERATE THE RV INDUCTION:
@@ -941,8 +974,9 @@ def run_program(num_intervals=20, dimension=3, component_vals=[(1,5),(-5,5),(-5,
 
             else:
                 start = time.time()
-                print('Running examples...')
-                print('This is (relatively) safe to stop at any time (the last file entry will likely be broken though)')
+                if print_running_info:
+                  print('Running examples...')
+                #print('This is (relatively) safe to stop at any time (the last file entry will likely be broken though)')
                 file_example_number = 0
 
                 for row in examples:
@@ -965,29 +999,98 @@ def run_program(num_intervals=20, dimension=3, component_vals=[(1,5),(-5,5),(-5,
 
                     subint_2 = copy.copy(file_permutation)
 
-                    file_matrix_rank = np.linalg.matrix_rank(np.matrix(file_lengths))
+                    #file_matrix_rank = np.linalg.matrix_rank(np.matrix(file_lengths))
 
                     # At every 50,000th example, note how long it has taken.
-                    if (file_example_number % 50000 == 0) and (file_example_number > 1):
+                    if (file_example_number % 250000 == 0) and (file_example_number > 1):
                         timestamps.append(time.time())
                         if len(timestamps) == 1:
                             runtimes.append(timestamps[0]-start)
-                            print('Time at Example {}: '.format(file_example_number) + 'Took %.1f seconds' % (runtimes[0]))
+                            if print_running_info:
+                              print('Time at Example {:,}: '.format(file_example_number) + 'Took %.1f seconds' % (runtimes[0]))
                         else:
                             runtimes.append(timestamps[-1] - timestamps[-2])
-                            print('Time at Example {}: '.format(file_example_number) + 'Took %.1f seconds ' % (runtimes[-1]) + '(%.1f minutes total)' % (sum(runtimes)/60))
+                            if print_running_info:
+                              print('Time at Example {:,}: '.format(file_example_number) + 'Took %.1f seconds ' % (runtimes[-1]) + '(%.1f minutes total)' % (sum(runtimes)/60))
 
         # ITERATE THE RV INDUCTION:
                     iterate(num_intervals, int_dimension, lengths, subint, subint_2, max_iterations)
                     file_example_number += 1
 
             # After iterating all examples, print how long functions took:
-            print('Halting examples: {}/{};  {}%'.format(halt_count, file_example_number, (halt_count//file_example_number)*100))
+            if file_example_number < 1000001:
+              print('Halting examples: {}/{};  {}%'.format(halt_count, file_example_number, (halt_count/file_example_number)*100))
+            else:
+              print('Halting examples: {:,}/{:,};  {}%'.format(halt_count, file_example_number, (halt_count/file_example_number)*100))
             end = time.time()
-            print('Took %f seconds' % (end - start))
+            print('Average iterations: {}'.format(iteration_count/file_example_number))
+            print('Iterations per second: {}'.format(iteration_count/(end - start)))
+            print('Examples per second: {}'.format(file_example_number/(end-start)))
+            if print_running_info:
+              print('Took %f seconds' % (end - start))
+              print('================================\n\n')
 
-for _ in range(1):
-    run_program(only_write_halts=False)
+
+"""
+Number of possible examples for
+m = number of itervals
+d = interval dimension
+n = numerical bound, where for an interval, say, A
+
+len_lex(A) : [a_0, a_1, .., a_{d-1}]
+and we are bounding 0 <  a_0 <= n
+and                -n <= a_i <= n  for all i =/= 0
+
+Then the number of possible lengths for A is:
+
+  [a_0, a_1, .., a_{d-1}]
+    n * (2n+1)^{d-1}
+
+Since there are m intervals we have the number of possible lengths for all m:
+
+  [n * (2n+1)^{d-1}]^m
+
+  and then of course (roughly) ~ m! permutations of the intervals for
+  (~m!)* [n * (2n+1)^{d-1}]^m
+
+  m! = O(m^m)
+
+Which is O(m^m * n^{dm})
+
+if d, m fixed, and n varies,
+
+we have ~ O(n^{dm})  = O({numerical bound}^{#dimensions*#intervals}).
+
+I will note, for reasonable values of d=3, m=4,
+# examples for n=1 ~ 78,000              7.5*10^4
+# examples for n=2 ~ 75,000,000          7.5*10^7
+# examples for n=3 ~ 5,600,000,000       5.6*10^9
+# examples for n=4 ~ 132,239,526,912         10^11
+# examples for n=5 ~                         10^12
+# examples for n=6 ~                         10^13
+# examples for n=10 ~                        10^15
+# examples for n=100 ~                       10^27
+# examples for n=1000 ~                      10^39
+
+
+
+
+Since examples are sampled randomly, we expect O(k^{2}/(2*X)) repeated examples,
+where k is number of examples computed, and X  is the number of possilbe examples
+
+"""
+
+
+
+
+
+
+
+
+
+
+for i in range(1,2):
+    run_program(component_vals=[(1,i),(-1*i,i),(-1*i,i)], num_examples=500000, print_running_info=True, write_nothing=False)
 
 
 
