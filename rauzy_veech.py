@@ -120,7 +120,7 @@ csv.register_dialect('halt_dialect', delimiter=',', escapechar = '|', skipinitia
 #
 # 9. Fix debugging code.
 #
-# 10. Reimplement build_examples with np.random
+# DONE: 10. Reimplement build_examples with np.random
 # =============================================================================
 
 
@@ -192,19 +192,28 @@ def build_examples(num_ints, int_dim, c_vals, perms, num_exs):
         print('Expected {} pairs of component values. Recieved {}. Ignoring last {} pairs: '.format(
                 int_dim, len(c_vals), len(c_vals) - int_dim), c_vals[-(len(c_vals) - int_dim):])
 
-    #rng = np.random.default_rng()
-    examples = []
-    for q in range(num_exs):
-        lengths = []
-        for interval in range(num_ints):
-            lengths.append(list(
-              random.randint(c_vals[dim][0], c_vals[dim][1])
-              for dim in range(int_dim)))
+    # This is faster than building the examples individually.
+    rng = np.random.default_rng()
 
-        index = q % len(perms)
-        examples.append([num_ints, int_dim, perms[index], lengths])
+    examples = np.array(list(
+      rng.integers(c_vals[dim][0], c_vals[dim][1]+1, size=(num_ints, num_exs))
+      for dim in range(int_dim)))
+
+    examples = examples.T.reshape(num_exs, num_ints, int_dim).tolist()
+
+    permutations = rng.choice(perms, size=num_exs, replace=True)
+    # examples = []
+    # for q in range(num_exs):
+    #     lengths = []
+    #     for interval in range(num_ints):
+    #         lengths.append(list(
+    #           random.randint(c_vals[dim][0], c_vals[dim][1])
+    #           for dim in range(int_dim)))
+
+    #     index = q % len(perms)
+    #     examples.append([num_ints, int_dim, perms[index], lengths])
     print('Random examples built.')
-    return examples
+    return examples, permutations
 
 def lex_longer(A, B):
     """
@@ -811,7 +820,6 @@ def iterate(num_intervals, int_dimension, lengths, subint, subint_2, inductions)
 
         if exit_status == 1:
             break
-            #print '_______________________________________________________________________'
 
     return
     # Pretty sure this stat is unreachable.
@@ -825,8 +833,8 @@ def iterate(num_intervals, int_dimension, lengths, subint, subint_2, inductions)
 # Setup that runs when program is run to set options:
 print('')
 print('')
-print('USER INPUTS:')
-print('')
+#print('USER INPUTS:')
+#print('')
 
 def run_program(num_intervals=4, dimension=3, component_vals=[(1,5),(-5,5),(-5,5)],
                 num_examples=10000, max_iterations=10000, filename_input=None,
@@ -911,7 +919,7 @@ def run_program(num_intervals=4, dimension=3, component_vals=[(1,5),(-5,5),(-5,5
         #    for h in int_dim - c_vals:
         #        c_vals.extend(c_vals[-2],c_vals[-1])
         example_start = time.time()
-        examples = build_examples(num_ints, int_dim, c_vals, permutations, num_exs)
+        examples, ex_perms = build_examples(num_ints, int_dim, c_vals, permutations, num_exs)
         if print_running_info:
           print('Took %f seconds' % (time.time() - example_start))
 
@@ -927,6 +935,7 @@ def run_program(num_intervals=4, dimension=3, component_vals=[(1,5),(-5,5),(-5,5
 
             if filename_input is not None: #This is for running specific examples
 #TODO: Check this still works!
+#TODO: This almost certainly doesn't work
 
                 with open(filename, "r") as input_file:
                     reader = csv.DictReader(input_file, dialect='rv_program_dialect')
@@ -979,14 +988,12 @@ def run_program(num_intervals=4, dimension=3, component_vals=[(1,5),(-5,5),(-5,5
                 #print('This is (relatively) safe to stop at any time (the last file entry will likely be broken though)')
                 file_example_number = 0
 
-                for row in examples:
-                    file_num_intervals = row[0]
-                    file_interval_dimension = row[1]
-                    file_permutation = row[2]
-                    #lengths_temp = row[3].strip().split()
-                    file_lengths = row[3]
-                    #for k in lengths_temp:
-                    #    file_lengths.append(list(map(int,(k.split(',')))))
+                for ex in range(len(examples)):
+                    file_num_intervals = num_ints
+                    file_interval_dimension = int_dim
+                    file_permutation = ex_perms[i]
+                    file_lengths = examples[i]
+
 
                     subint = ''                    #String containing the name of the subintervals
                     num_intervals = file_num_intervals
@@ -1001,7 +1008,7 @@ def run_program(num_intervals=4, dimension=3, component_vals=[(1,5),(-5,5),(-5,5
 
                     #file_matrix_rank = np.linalg.matrix_rank(np.matrix(file_lengths))
 
-                    # At every 50,000th example, note how long it has taken.
+                    # At every 250,000th example, note how long it has taken.
                     if (file_example_number % 250000 == 0) and (file_example_number > 1):
                         timestamps.append(time.time())
                         if len(timestamps) == 1:
@@ -1030,6 +1037,19 @@ def run_program(num_intervals=4, dimension=3, component_vals=[(1,5),(-5,5),(-5,5
               print('Took %f seconds' % (end - start))
               print('================================\n\n')
 
+
+
+
+######
+# RUN PROGRAM:
+#
+for i in range(1,2):
+    run_program(component_vals=[(1,i),(-1*i,i),(-1*i,i)], num_examples=500000, print_running_info=True, write_nothing=False)
+
+#
+#
+#
+######
 
 """
 Number of possible examples for
@@ -1088,9 +1108,6 @@ where k is number of examples computed, and X  is the number of possilbe example
 
 
 
-
-for i in range(1,2):
-    run_program(component_vals=[(1,i),(-1*i,i),(-1*i,i)], num_examples=500000, print_running_info=True, write_nothing=False)
 
 
 
