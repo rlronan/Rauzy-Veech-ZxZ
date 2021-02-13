@@ -8,7 +8,7 @@ Rronan1@cuny.gc.edu
 
 '''
 # RV INDUCTION IN Z^N
-# LAST EDIT 9/26/2020 (
+# LAST EDIT 2/12/2021
 
 
 # Iterates the dynamic system of a Rauzy-Veech Induction (on an interval exchange transformation)
@@ -27,34 +27,29 @@ import sys
 import string
 import copy
 import csv
-import argparse
+#import argparse
 import time
 import random
 import numpy as np
 from itertools import permutations
 from itertools import chain
 
-subint = ''                    #String containing the name of the subintervals
-lengths = []            #list containing sublists associated with each inteval
-pi_0 = []                #list of order of the letters before they are permuted
-pi_1 = []                #list of order of the letters after they are permuted
-pi_RV = []            #a list that keeps track of the pairs pi_0, pi_1 over time
-num_iterations = 0           #the number of iterations that has occured so far
-alphabet = string.ascii_uppercase   #string of the alphabet; to create subint
+#num_iterations = 0           #the number of iterations that has occured so far
+#alphabet = string.ascii_uppercase   #string of the alphabet; to create subint
 
-# The following variables are pulled from an input file if used:
-file_ex_num = []                   # The example number
-file_num_int = []                  # The number of intervals (should be able to rewrte to make this implicit)
-file_int_dim = []                  # The dimension (i.e. number of components) of the intervals
-file_len = []                      # The touples of numerical values that correspond to the lengths of each interval
-file_subint_2= []                  # The permutation that ABC..N is sent to
+# # The following variables are pulled from an input file if used:
+# file_ex_num = []                   # The example number
+# file_num_int = []                  # The number of intervals (should be able to rewrte to make this implicit)
+# file_int_dim = []                  # The dimension (i.e. number of components) of the intervals
+# file_len = []                      # The touples of numerical values that correspond to the lengths of each interval
+# file_subint_2= []                  # The permutation that ABC..N is sent to
 # ----------------------------------------------------
 
 runtimes = []                      # A list to hold the runtime of each example
 timestamps =[]                     # A list containing time stamps used to generate runtimes
-has_header = False                 # Does the output csv file alerady have a header row. Lets assume no
-halt_has_header = False            # Does the halting output csv file alerady have a header row. Lets assume no
-print_only = False                 # If True output is printed in console not written to file
+# has_header = False                 # Does the output csv file alerady have a header row. Lets assume no
+# halt_has_header = False            # Does the halting output csv file alerady have a header row. Lets assume no
+# print_only = False                 # If True output is printed in console not written to file
 
 # a CSV dialect for input files which declares how they are formatted. Using
 # the standard deliminator, comma, overly complicates deauing with the commas that seperate length components
@@ -121,6 +116,10 @@ csv.register_dialect('halt_dialect', delimiter=',', escapechar = '|', skipinitia
 # 9. Fix debugging code.
 #
 # DONE: 10. Reimplement build_examples with np.random
+#
+# 11. Fix the use of globals
+#
+# 12. Reimplement checks as functions
 # =============================================================================
 
 
@@ -136,7 +135,7 @@ def build_perms(num_intervals):
     perms = []
 
     for i in range(num_intervals):
-        letters += alphabet[i]
+        letters += string.ascii_uppercase[i]
         all_perms = list(permutations(letters))
 
     for element in all_perms:
@@ -215,6 +214,7 @@ def build_examples(num_ints, int_dim, c_vals, perms, num_exs):
     print('Random examples built.')
     return examples, permutations
 
+# lexicographic longer
 def lex_longer(A, B):
     """
 
@@ -243,36 +243,37 @@ def lex_longer(A, B):
                 return 'equal'
         elif A[i] > B[i]:
             return 'top'
-        elif B[i] > A[i]:
+        else:# B[i] > A[i]:
             return 'bot'
-        else:
-            # Only calls on a CRITICAL ERROR. At least one of the components
-            # is not a number! Most likely the input (file) was misformatted,
-            # or missing data.
-            print('CRITICAL ERROR: failed to compare interval lengths: {}  &  {}'.format(A,B))
-            print('an interval contains a non-numeric component.')
-            print('Most likely the input (file) was misformatted, or missing data.')
-            print('Were the number of intervals and their dimension included?')
-            print('')
-            print('ERROR DATA:')
-            print('Type(first interval input) = {0} '.format(type(A)))
-            print('Type(second interval input) = {0} '.format(type(B)))
-            print('Lengths: {}'.format(lengths))
-            print('Pi_RV: {}'.format(pi_RV))
-            print('Pi_0: {}'.format(pi_0))
-            print('#######################################################################')
-            #measure_runtime += (time.time()-measure_time)
-            write_output('CRITICAL ERROR: Non-numeric value', '' '', '')
-            assert TypeError()
-            sys.exit()
+        # else:
+        #     # Only calls on a CRITICAL ERROR. At least one of the components
+        #     # is not a number! Most likely the input (file) was misformatted,
+        #     # or missing data.
+        #     print('CRITICAL ERROR: failed to compare interval lengths: {}  &  {}'.format(A,B))
+        #     print('an interval contains a non-numeric component.')
+        #     print('Most likely the input (file) was misformatted, or missing data.')
+        #     print('Were the number of intervals and their dimension included?')
+        #     print('')
+        #     print('ERROR DATA:')
+        #     print('Type(first interval input) = {0} '.format(type(A)))
+        #     print('Type(second interval input) = {0} '.format(type(B)))
+        #     # print('Lengths: {}'.format(lengths))
+        #     # print('Pi_RV: {}'.format(pi_RV))
+        #     # print('Pi_0: {}'.format(pi_0))
+        #     print('#######################################################################')
+        #     #measure_runtime += (time.time()-measure_time)
+        #     write_output('CRITICAL ERROR: Non-numeric value', '' '', '')
+        #     assert TypeError()
+        #     sys.exit()
 
-
+#%% lex subtract
 def lex_subtract(A, B):
     # Subtracts B from A, componentwise. Faster than Numpy for ~ < 100 components
+    #     according to some people on StackExchange, and my own tests.
     c= [x - y for x,y in zip(A,B)]
     return c
 
-
+#%% infinite longer
 def infinite_longer(A,B):
     # Compares intervals A, B, and return True if A is infintely larger than B
     # measure with lex-order.
@@ -284,40 +285,20 @@ def infinite_longer(A,B):
     while i < len(A):
 
         if A[i] == B[i] and A[i] == 0:
+            if A[i] == 0:
             # If the i'th component of A and B are 0 then
             # we proceed to the next component to check, and note that we've seen a zero previously.
-            i += 1
-
-        elif A[i] == B[i]:
+                i += 1
+            else:
             # If the i'th component of A and B are equal and non-zero,
             # then A cannot be infinitely larger, because they are comparable
-            return False
+                return False
         elif A[i] > 0 and B[i] <= 0:
             return True
-        elif A[i] > B[i]:
-            return False
-        elif B[i] > A[i]:
-            return False
         else:
-            # Only calls on a CRITICAL ERROR. At least one of the components
-            # is not a number! Most likely the input (file) was misformatted,
-            # or missing data.
-            print('CRITICAL ERROR: failed to compare interval lengths: {}  &  {}'.format(A,B))
-            print('an interval contains a non-numeric component.')
-            print('Most likely the input (file) was misformatted, or missing data.')
-            print('Were the number of intervals and their dimension included?')
-            print('')
-            print('ERROR DATA:')
-            print('Type(first interval input) = {0} '.format(type(A)))
-            print('Type(second interval input) = {0} '.format(type(B)))
-            print('Lengths: {}'.format(lengths))
-            print('Pi_RV: {}'.format(pi_RV))
-            print('Pi_0: {}'.format(pi_0))
-            print('#######################################################################')
-            write_output('CRITICAL ERROR: Non-numeric value', '', '', '')
-            sys.exit()
+            return False
 
-
+#%% Write output
 def write_output(end_condition, lengths, pi_RV, winner):
 
     # Function to call when the iteration reaches a point where we can determine
@@ -438,11 +419,11 @@ def write_output(end_condition, lengths, pi_RV, winner):
             writer.writerow(write_data)
 
 
-
-#     MAIN FUNCTION:
+#%% iterate (MAIN FUNCTION)
 def iterate(num_intervals, int_dimension, lengths, subint, subint_2, inductions):
     # Iterates the dynamic system of a Rauzy-Veech Induction (on an interval exchange transformation)
     # For intervals with 'lengths' in Z^n ordered lexicographically. See top for more info
+    alphabet = string.ascii_uppercase
     pi_0 = []                #list of order of the letters before they are permuted
     pi_1 = []                #list of order of the letters after they are permuted
     pi_RV = []
@@ -460,8 +441,16 @@ def iterate(num_intervals, int_dimension, lengths, subint, subint_2, inductions)
     pi_RV.append(copy.deepcopy(pi_1))
     winner =[]
 
-    if ((inductions == True) or (str(inductions) == 'infinity') or (str(inductions) == 'inf')):
-        k = 1000000
+    if inductions == -1:
+        print("\n=================================================\n\t\t\tWARNING")
+        print("This program will halt, but with no limit on the maximum number of iterations attempted per example,")
+        print("it is not known if it will halt in your lifetime.")
+        print("Enter -1 to continue, or a positive integer to set the maximum number of iterations to that value.")
+        inductions_in = input("Maximum iterations per example (default is 10,000):   ")
+        if int(inductions_in) == -1:
+            k = 1000000000000
+        elif int(inductions_in) >= 0:
+            k = int(inductions_in)
     else:
         k = int(inductions)
     #ex_prev = list(range(1000))
@@ -470,13 +459,11 @@ def iterate(num_intervals, int_dimension, lengths, subint, subint_2, inductions)
         exit_status = 0
         if j == k:
             # More than the maximum specified num of iterations are requried.
-
-            write_output('UNFINSHED', lengths, pi_RV, winner)
+            write_output('unfinished', lengths, pi_RV, winner)
             return
 
+#%%
 # The induction process itself:
-
-
 
         # Get last (right-most) element of the top and bottom permutations:
         last_top = pi_0[-1]
@@ -494,81 +481,13 @@ def iterate(num_intervals, int_dimension, lengths, subint, subint_2, inductions)
         if longer_interval == 'equal':
             # If the two compared intervals are the same length the induction ends.
             #ind_runtime += (time.time()-ind_time)
-            write_output('Ends', lengths, pi_RV, winner)
-            exit_status = 1
+            write_output('ends', lengths, pi_RV, winner)
+            return
+#            exit_status = 1
 
 
-            #resetting lengths (adding second component to first if positive)
-
-            # if False:
-            #if True attempts to restart the induction process from the beginning with lengths alterted by add/subtracting
-            # every intervals 2nd, or 3rd, etc., component from the first. (NOT A prioiri) this perserves relationships
-            # and appears to work sometimes.
-
-            #     exit_status = 0
-
-            #     #alter the lengths 1st attempt
-            #     lengths, unaltered = alter_lengths(lengths, top_idx, bot_idx, last_top, last_bot)
-
-            #     #were the not-altered?
-            #     if unaltered == True:
-            #         #print('Unalterable')
-            #         write_output('Unalterable', lengths, pi_RV, winner)
-
-            #         return
-
-            #     #if they were compare the lengths again:
-            #     longer_interval = lex_longer(lengths[top_idx], lengths[bot_idx])
-
-            #     # If they're still equal, repeat the process
-            #     if longer_interval == 'equal':
-
-            #         #2nd attempt
-            #         lengths, unaltered = alter_lengths(lengths, top_idx, bot_idx, last_top, last_bot)
-
-            #         if unaltered == True:
-            #             return
-
-            #         longer_interval = lex_longer(lengths[top_idx], lengths[bot_idx])
-
-            #         if longer_interval == 'equal':
-
-            #             #3rd attempt:
-            #             lengths, unaltered = alter_lengths(lengths, top_idx, bot_idx, last_top, last_bot)
-
-            #             if unaltered == True:
-            #                 return
-
-            #             longer_interval = lex_longer(lengths[top_idx], lengths[bot_idx])
-
-            #             #give up after 3 tries:
-            #             if longer_interval == 'equal':
-            #                 #print('Failure at length change')
-            #                 write_output('Immediate_failure', lengths, pi_RV, winner)
-            #                 return
-
-
-            #     #Results of iteration:
-            #     #print ''
-            #     #print 'Altered results: '
-            #     #print 'Lengths of {0} = {1}'.format(subint,lengths)
-            #     #print('~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=')
-            #     num_iterations = 0
-            #     for num in range(1000):
-            #         if num == 999:
-            #             #print('Terminating tests')
-            #             write_output('Failure', lengths, pi_RV, winner)
-            #             exit_status = 1
-            #             break
-            #         elif ex_prev[num] == file_example_number:
-            #             continue
-            #         else:
-            #             #print('setting values')
-            #             ex_prev[num] = file_example_number
-            #             break
-
-        if exit_status == 1:
-            break
+        # if exit_status == 1:
+        #     break
         if longer_interval == 'top':
             # The top interval is longer is thus the 'winner'
 
@@ -586,7 +505,7 @@ def iterate(num_intervals, int_dimension, lengths, subint, subint_2, inductions)
             # Note the winner:
             winner.append('top')
 
-        elif longer_interval == 'bot':
+        else: #if longer_interval == 'bot':
 
             lengths[bot_idx] = lex_subtract(lengths[bot_idx], lengths[top_idx])
             pi_0.remove(last_top)
@@ -598,6 +517,7 @@ def iterate(num_intervals, int_dimension, lengths, subint, subint_2, inductions)
         # increase the count of iterations completed.
         num_iterations += 1
 
+#%% Termination checks
 # One step of the RV-Induction finishes here.
 # _____________________________________________________________________________
 #
@@ -608,65 +528,40 @@ def iterate(num_intervals, int_dimension, lengths, subint, subint_2, inductions)
 # believs that to be the case.
 
 
+#%% Check 1 & 2:
+        last_top = pi_0[-1]
+        last_bot = pi_1[-1]
 
 # CHECK 1:
 # Check if the (new) top interval is infinitely larger than everything else:
-        #global check_overcount
-        #check_time = time.time()
-        count = 0
-
-        # if exist status is 1, we know the answer; go to next example.
-        exit_status = 0
-
-        #print 'checking if pi_0[-1] >>> everything'
-        for x in range(num_intervals):
-            if count == (num_intervals - 1):  # range(x) is {0,1,...x-1}
-                # count is at the inteval index in the list we would check against, so it is num_int - 1
-                # then we are at the last interval, which is the one we compare against,
-                # meaning we have checked against all other intervals, so we stop,
-                # b.c. it is inf. longer than every other interval.
-
-                #print '{} is >>> longer than every other interval'.format(pi_0[-1])
-                exit_status = 1  # Stop checking things
-                write_output('{} >> all'.format(pi_0[-1]), lengths, pi_RV, winner)
-                break
-            elif infinite_longer(lengths[alphabet.index(pi_0[-1])], lengths[alphabet.index(pi_0[x])]):
-                # pi_0 >>> than the x'th interval (in alphabetic order)
-                count += 1
-            else:
-                # pi_0 is not(>>>) than some interval.
-                break
+        top_inf_all_bool, top_inf_last_bot = top_inf_all(lengths, pi_0, last_bot, num_intervals)
+        if top_inf_all_bool:
+            write_output('{} >> all'.format(pi_0[-1]), lengths, pi_RV, winner)
+            return
 
 # CHECK 2:
 # Check if the (new) bottom interval is infintely large than every other interval:
-        count = 0
-        if exit_status == 1:
-            break
-        #print 'checking if pi_1[-1] >>> everything'
-        for x in range(num_intervals):
-            if count == (num_intervals - 1):
-                #print '{} is >>> longer than every other interval'.format(pi_1[-1])
-                exit_status = 1
+        bot_inf_all_bool, bot_inf_last_top = bot_inf_all(lengths, pi_1, last_top, num_intervals)
+        if bot_inf_all_bool:
+            write_output('{} >> all'.format(pi_1[-1]), lengths, pi_RV, winner)
+            return
 
-                write_output('{} >> all'.format(pi_1[-1]), lengths, pi_RV, winner)
-                break
-            elif infinite_longer(lengths[alphabet.index(pi_1[-1])], lengths[alphabet.index(pi_1[x])]):
-                count += 1
-            else:
-                break
-        if exit_status == 1:
-            break
+# Pull cached values of whether last top or bottom is infinitely larger than the other
+# Calculate if unknown.
+        if top_inf_last_bot == None:
+            # Use this to hold truth value of whether current top >>> current bot
+            top_inf_bot = infinite_longer(lengths[alphabet.index(pi_0[-1])], lengths[alphabet.index(pi_1[-1])])
+        else:
+            top_inf_bot = top_inf_last_bot
 
-
-#TODO: we already calculated these two values, pull them from above.
-
-        # Use this to hold truth value of whether current top >>> current bot
-        top_inf_bot = infinite_longer(lengths[alphabet.index(pi_0[-1])], lengths[alphabet.index(pi_1[-1])])
-
-        # Use this to hold truth value of whether bot >>> top
-        bot_inf_top = infinite_longer(lengths[alphabet.index(pi_1[-1])], lengths[alphabet.index(pi_0[-1])])
-
-
+        if top_inf_bot:
+            bot_inf_top = False
+        elif bot_inf_last_top == None:
+            # Use this to hold truth value of whether bot >>> top
+            bot_inf_top = infinite_longer(lengths[alphabet.index(pi_1[-1])], lengths[alphabet.index(pi_0[-1])])
+        else:
+            bot_inf_top = bot_inf_last_top
+#%% Termination check 3:
 # CHECK 3:
 
         ## if neither of these is true we don't yet know if we are in a repeating cycle that continues infinitely;
@@ -682,7 +577,7 @@ def iterate(num_intervals, int_dimension, lengths, subint, subint_2, inductions)
         if (top_inf_bot == True               ### SHOULD DEFINITELY CLEAN THIS UP BC
             or bot_inf_top == True):          ### COMPUTATIONALLY THINGS ARE REPEATED UNNCEESSARILY BELOW AND ABOVE
 
-            #for i in reversed(list(range(1, min(num_intervals, num_iterations+1)))):
+            # Checking previous iterations, don't check too far backwards
             i = min(num_intervals-1, num_iterations)
             while i > 0:
               # Check i-many iterations backward for an identical pair of permutations
@@ -781,9 +676,9 @@ def iterate(num_intervals, int_dimension, lengths, subint, subint_2, inductions)
 
                         if win_count == (i-1):
                             write_output('{}cycle'.format(cycle), lengths, pi_RV, winner)
-                            exit_status = 1
-                            break
-
+                            # exit_status = 1
+                            # break
+                            return
 
                         previous_top = pi_RV[-2*(i - forward_it) -2][-1]   ## effectively the same as last top and bottom
                         previous_bot = pi_RV[-2*(i - forward_it) -1][-1]   ## except they are relative to
@@ -822,8 +717,59 @@ def iterate(num_intervals, int_dimension, lengths, subint, subint_2, inductions)
             break
 
     return
-    # Pretty sure this stat is unreachable.
-    #sys(exit)
+
+
+#%% function for termination check 1
+def top_inf_all(lengths, pi_0, last_bot, num_intervals, alphabet=string.ascii_uppercase):
+    # Check if the (new) top interval is infinitely larger than everything else:
+    #print 'checking if pi_0[-1] >>> everything'
+    last_bot_idx = pi_0.index(last_bot) # index of last bot in the top interval
+    top_inf_last_bot = None               # if last_top >>> last_bot
+    for count in range(num_intervals):
+        # We only need to compare the top (right) interval against
+        #   num_interval - 1 many intervals because we don't compare top
+        #   against its copy in the bottom. We run checks for
+        #   indexes: 0,..,num_int - 2, and then stop on the num_int - 1 index.
+
+        if count == (num_intervals - 1):
+          # meaning we have checked against all other intervals, so we stop,
+          # b.c. it is inf. longer than every other interval.
+          #print '{} is >>> longer than every other interval'.format(pi_0[-1])
+            return True, True
+        elif not infinite_longer(lengths[alphabet.index(pi_0[-1])], lengths[alphabet.index(pi_0[count])]):
+            if count == last_bot_idx:
+                top_inf_last_bot = False
+            # if not (pi_0 >>> than the count'th interval (in alphabetic order))
+            return False, top_inf_last_bot
+        if count == last_bot_idx:
+            top_inf_last_bot = True
+
+
+#%% function for termination check 2
+def bot_inf_all(lengths, pi_1, last_top, num_intervals, alphabet=string.ascii_uppercase):
+    # Check if the (new) bottom interval is infintely large than every other interval:
+    # see function top_inf_all for more details.
+    last_top_idx = pi_1.index(last_top) # index of last top in the bot interval
+    bot_inf_last_top = None               # if last_bot >>> last_top
+    for count in range(num_intervals):
+        if count == (num_intervals - 1):
+            return True, True
+        elif not infinite_longer(lengths[alphabet.index(pi_1[-1])], lengths[alphabet.index(pi_1[count])]):
+            if count == last_top_idx:
+                bot_inf_last_top = False
+            return False, bot_inf_last_top
+        if count == last_top_idx:
+            bot_inf_last_top = True
+
+#%%
+
+
+
+
+
+
+
+
 #
 # END OF CHECKING POST-INDCTION
 # END OF ITERATION FOR EXAMPLE
@@ -1038,7 +984,9 @@ def run_program(num_intervals=4, dimension=3, component_vals=[(1,5),(-5,5),(-5,5
               print('================================\n\n')
 
 
-
+if __name__ == "__main__":
+    #TODO
+    pass
 
 ######
 # RUN PROGRAM:
